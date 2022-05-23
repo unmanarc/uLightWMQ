@@ -35,6 +35,7 @@ Simple HTTPS Server for JSON Message Queue
 - 100% HTTPS Based
 - Instant delivery or disk saved
 - Function to wait in the HTTP client for new messages
+- Function to wait for peer answer (with timeout)
 - Very Lightweight (can be used in IoT)
 
 ***
