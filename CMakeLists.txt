@@ -5,7 +5,7 @@ set(APP_NAME "uLightWMQ")
 set(SVERSION 1.0.0)
 
 project(${APP_NAME})
-project(${PROJECT_NAME} VERSION ${SVERSION} DESCRIPTION "Unmanarc's Light Web Message Queue")
+project(${PROJECT_NAME} VERSION ${SVERSION} DESCRIPTION "Unmanarc's Lightweight Web Message Queue")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 

@@ -5,8 +5,8 @@
 Name:           %{name}
 Version:        %{version}
 Release:        %{build_timestamp}.git%{?dist}
-Summary:        Unmanarc Light HTTPS Web Message Queue
-License:        AGPL
+Summary:        Unmanarc Lightweight HTTPS Web Message Queue
+License:        LGPLv3
 URL:            https://github.com/unmanarc/uLightWMQ
 Source0:        https://github.com/unmanarc/uLightWMQ/archive/master.tar.gz#/%{name}-%{version}-%{build_timestamp}.tar.gz
 Group:          Applications/Internet
@@ -33,14 +33,10 @@ Group:          Applications/Internet
 %define debug_package %{nil}
 %endif
 
-
-%if 0%{?rhel} == 6
-BuildRequires:  %{cmake} libMantids-devel openssl-devel zlib-devel boost-devel gcc-c++
-%else
-BuildRequires:  %{cmake} libMantids-devel openssl-devel zlib-devel boost-devel gcc-c++
-%endif
-
-Requires: libMantids zlib openssl boost-regex
+BuildRequires: libMantids-devel >= 2.5.9
+BuildRequires:  %{cmake}  systemd libMantids-sqlite openssl-devel zlib-devel boost-devel gcc-c++ sqlite-devel
+Requires: libMantids >= 2.5.9
+Requires: libMantids-sqlite zlib openssl boost-regex jsoncpp sqlite
 
 %description
 This package contains a very efficient and simple web server for WEB Messages Queue with TLS/SSL Common Name peer authentication
@@ -86,8 +82,35 @@ ln -s . s390x-redhat-linux-gnu
 %cmake_install
 %endif
 
+mkdir -vp $RPM_BUILD_ROOT/var/lib/ulightwmq
+chmod 700 $RPM_BUILD_ROOT/var/lib/ulightwmq
+
+mkdir -vp $RPM_BUILD_ROOT/etc
+cp -a etc/uLightWMQ $RPM_BUILD_ROOT/etc/
+chmod 600 $RPM_BUILD_ROOT/etc/uLightWMQ/keys/web_snakeoil.key
+
+mkdir -vp $RPM_BUILD_ROOT/usr/lib/systemd/system
+cp usr/lib/systemd/system/ulightwmq.service $RPM_BUILD_ROOT/usr/lib/systemd/system/%{name}.service
+chmod 644 $RPM_BUILD_ROOT/usr/lib/systemd/system/%{name}.service
+
+
 %files
 %doc
 %{_bindir}/uLightWMQ
+%config(noreplace) /etc/uLightWMQ/keys/ca.crt
+%config(noreplace) /etc/uLightWMQ/keys/web_snakeoil.crt
+%config(noreplace) /etc/uLightWMQ/keys/web_snakeoil.key
+%config(noreplace) /etc/uLightWMQ/config.ini
+%dir /var/lib/ulightwmq
+/usr/lib/systemd/system/%{name}.service
+
+%post
+%systemd_post %{name}.service
+
+%preun
+%systemd_preun %{name}.service
+
+%postun
+%systemd_postun_with_restart %{name}.service
 
 %changelog

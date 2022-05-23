@@ -1,6 +1,6 @@
 # uLightWMQ 
 
-Unmanarc Light HTTPS Web Message Queue
+Unmanarc Lightweight HTTPS Web Message Queue
   
 Author: Aaron Mizrachi (unmanarc) <aaron@unmanarc.com>   
 Main License: LGPLv3
@@ -36,7 +36,7 @@ Simple HTTPS Server for JSON Message Queue
 - Instant delivery or disk saved
 - Function to wait in the HTTP client for new messages
 - Function to wait for peer answer (with timeout)
-- Very Lightweight (can be used in IoT)
+- Very Lightweight (can be used in IoT with a very low memory/cpu/bw footprint)
 
 ***
 ## Building/Installing uLightWMQ
