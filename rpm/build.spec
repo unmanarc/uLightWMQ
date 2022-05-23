@@ -34,7 +34,7 @@ Group:          Applications/Internet
 %endif
 
 BuildRequires: libMantids-devel >= 2.5.9
-BuildRequires:  %{cmake}  systemd libMantids-sqlite openssl-devel zlib-devel boost-devel gcc-c++ sqlite-devel
+BuildRequires:  %{cmake} systemd libMantids-sqlite openssl-devel zlib-devel boost-devel gcc-c++ sqlite-devel jsoncpp-devel
 Requires: libMantids >= 2.5.9
 Requires: libMantids-sqlite zlib openssl boost-regex jsoncpp sqlite
 
