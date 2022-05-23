@@ -8,7 +8,7 @@ Release:        %{build_timestamp}.git%{?dist}
 Summary:        Unmanarc Lightweight HTTPS Web Message Queue
 License:        LGPLv3
 URL:            https://github.com/unmanarc/uLightWMQ
-Source0:        https://github.com/unmanarc/uLightWMQ/archive/master.tar.gz#/%{name}-%{version}-%{build_timestamp}.tar.gz
+Source0:        https://github.com/unmanarc/uLightWMQ/archive/main.tar.gz#/%{name}-%{version}-%{build_timestamp}.tar.gz
 Group:          Applications/Internet
 
 %define cmake cmake
@@ -42,7 +42,7 @@ Requires: libMantids-sqlite zlib openssl boost-regex jsoncpp sqlite
 This package contains a very efficient and simple web server for WEB Messages Queue with TLS/SSL Common Name peer authentication
 
 %prep
-%autosetup -n %{name}-master
+%autosetup -n %{name}-main
 
 %build
 %{cmake} -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_BUILD_TYPE=MinSizeRel -DWITH_SSL_SUPPORT=ON
