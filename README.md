@@ -5,64 +5,73 @@ Unmanarc Lightweight HTTPS Web Message Queue
 Author: Aaron Mizrachi (unmanarc) <aaron@unmanarc.com>   
 Main License: LGPLv3
 
-***
-## Builds
 
-- COPR (Fedora/CentOS/etc):  
+
+***
+## Installing packages (HOWTO)
+
+
+- [Manual build guide](BUILD.md)
+- COPR Packages (Fedora/CentOS/RHEL/etc):  
 [![Copr build status](https://copr.fedorainfracloud.org/coprs/amizrachi/unmanarc/package/uLightWMQ/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/amizrachi/unmanarc/package/uLightWMQ/)
 
 
-Install in Fedora/RHEL8/9:
+### Simple installation guide for Fedora/RHEL:
+
+- Proceed to activate our repo's and download/install uLightWMQ:
 ```bash
+# NOTE: for RHEL7 replace dnf by yum
 dnf copr enable amizrachi/unmanarc
 
 dnf -y install uLightWMQ
 ```
 
-Install in RHEL7:
+- Once installed, you can continue by activating/enabling the service:
 ```bash
-dnf copr enable amizrachi/unmanarc
+systemctl enable --now uLightWMQ
+```
 
-yum -y install uLightWMQ
+- Don't forget to open the firewall:
+
+```bash
+# Add Website port:
+firewall-cmd --zone=public --permanent --add-port 60443/tcp
+# Reload Firewall rules
+firewall-cmd --reload
 ```
 
 ***
-## Project Description
+## Usage (HOWTO/Examples)
 
-Simple HTTPS Server for Message Queue
+1. First, replace the ca.crt/web_snakeoil.key/web_snakeoil.crt with your own X.509 certs.
+2. (re)Start the program in background 
+3. Create certificates for you own endpoints (client X.509 certs)
+4. Every endpoint should start executing /pop to create their own database.
+5. put the hostname (in this case webserver) to /etc/hosts or your own DNS.
 
-- TLS/SSL Common Name peer authentication
-- 100% HTTPS Based
-- Instant delivery or disk saved
-- Function to wait in the HTTP client for new messages
-- Function to wait for peer answer (with timeout)
-- Very Lightweight (can be used in IoT with a very low memory/cpu/bw footprint)
+After that, you can deliver messages like this  (eg. from alice to bob):
 
-***
-## Building/Installing uLightWMQ
-
-### Building Instructions:
-
-This guide is optimized for centos7 (you can adapt this for your OS), and the generated binary should be compatible with other neewer distributions...
-
-First, as prerequisite, you must have installed libMantids (as static libs, and better if MinSizeRel)
-
-and then...
-
-```
-git clone https://github.com/unmanarc/uLightWMQ
-cd uLightWMQ
-cmake3 . -DPORTABLE=ON -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_INSTALL_PREFIX:PATH=/opt/osslibs -DEXTRAPREFIX:PATH=/opt/osslibs -B../uLightWMQ-build
-cd ../uLightWMQ-build
-make -j4 install
+```bash
+# Waiting for bob's answer while asking to close the app:
+curl --data-binary "Do you really want to close this app?"  -H "Content-Type: application/octet-stream" --cert issued/alice.crt --key private/alice.key --cacert ca.crt  -v 'https://webserver:60443/push?dst=bob&waitForAnswer=1'
 ```
 
-And if you want to shrink the binary size:
+And answer messages like this (as bob, the msg receptor):
 
+```bash
+# As bob, Load the private/public key that authenticate with the ca.crt:
+curl --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/front'
 ```
-strip -x -X -s /opt/osslibs/bin/uLightWMQ
-upx -9 --ultra-brute /opt/osslibs/bin/uLightWMQ
+
+And then, using the curl verbosity mode, check at the header the message Id and send your answer.
+
+```bash
+# Answer the message by his Id.
+curl --data-binary "NO"  -H "Content-Type: application/octet-stream" --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/answer?id=12'
 ```
+
+after that, the web server will deliver the answer to the listener.
+
 
 ***
 ## Compatibility
