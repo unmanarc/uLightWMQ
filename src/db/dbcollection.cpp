@@ -3,6 +3,7 @@
 #include "../globals.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include <dirent.h>
+#include <thread>
 
 std::map<std::string, MessageDB *> DBCollection::rcpts;
 std::mutex DBCollection::m;

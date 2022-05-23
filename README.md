@@ -29,7 +29,7 @@ yum -y install uLightWMQ
 ***
 ## Project Description
 
-Simple HTTPS Server for JSON Message Queue
+Simple HTTPS Server for Message Queue
 
 - TLS/SSL Common Name peer authentication
 - 100% HTTPS Based
@@ -78,7 +78,6 @@ This program was tested so far in:
 
 * libMantids
 * openssl
-* jsoncpp
 * sqlite3
 * cmake3
 * C++11 Compatible Compiler (like GCC >=5)

@@ -6,7 +6,7 @@
 
 
 using namespace Mantids::Application;
-using namespace Mantids::Authentication;
+//using namespace Mantids::Authentication;
 using namespace Mantids;
 
 

@@ -34,9 +34,9 @@ Group:          Applications/Internet
 %endif
 
 BuildRequires: libMantids-devel >= 2.5.9
-BuildRequires:  %{cmake} systemd libMantids-sqlite openssl-devel zlib-devel boost-devel gcc-c++ sqlite-devel jsoncpp-devel
+BuildRequires:  %{cmake} systemd libMantids-sqlite openssl-devel zlib-devel boost-devel gcc-c++ sqlite-devel
 Requires: libMantids >= 2.5.9
-Requires: libMantids-sqlite zlib openssl boost-regex jsoncpp sqlite
+Requires: libMantids-sqlite zlib openssl boost-regex sqlite
 
 %description
 This package contains a very efficient and simple web server for WEB Messages Queue with TLS/SSL Common Name peer authentication
