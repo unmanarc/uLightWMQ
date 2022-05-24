@@ -33,9 +33,9 @@ Group:          Applications/Internet
 %define debug_package %{nil}
 %endif
 
-BuildRequires: libMantids-devel >= 2.5.9
+BuildRequires: libMantids-devel >= 2.5.10
 BuildRequires:  %{cmake} systemd libMantids-sqlite openssl-devel zlib-devel boost-devel gcc-c++ sqlite-devel
-Requires: libMantids >= 2.5.9
+Requires: libMantids >= 2.5.10
 Requires: libMantids-sqlite zlib openssl boost-regex sqlite
 
 %description
