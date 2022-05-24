@@ -113,19 +113,23 @@ bool MessageDB::push(const std::string &msg, const std::string &src, const bool 
 
 bool MessageDB::answer(uint32_t id, const std::string &msgAnswer)
 {
-    std::string lastSQLError;
-
     {
         std::unique_lock<std::mutex> lock(mt);
 
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Setting answer to rcpt='%s', msgid='%lu'", rcpt.c_str(), id);
 
-        if (!
-                db.query(&lastSQLError,"UPDATE queue SET `answer`=:answer, answered='1' WHERE `id`=:id AND `answered`='0' AND `waitforanswer`='1';",
-                            { {":answer",new Abstract::STRING(msgAnswer)}, {":id",new Abstract::UINT32(id)} }
-                         ))
+
+        QueryInstance qi = db.query("UPDATE queue SET `answer`=:answer, answered='1' WHERE `id`=:id AND `answered`='0' AND `waitforanswer`='1';",
+                                    { {":answer",new Abstract::STRING(msgAnswer)}, {":id",new Abstract::UINT32(id)} },{});
+
+        if (!qi.query->exec(EXEC_TYPE_INSERT))
         {
-            Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't set answer to rcpt='%s', msgid='%lu': %s", rcpt.c_str(),id,  lastSQLError.c_str() );
+            Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't set answer to rcpt='%s', msgid='%lu': %s", rcpt.c_str(),id,  qi.query->getLastSQLError().c_str() );
+            return false;
+        }
+        else if ( !qi.query->getAffectedRows() )
+        {
+            Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't set answer to rcpt='%s', msgid='%lu': Message does not exist or already answered", rcpt.c_str(),id);
             return false;
         }
     }
@@ -141,11 +145,17 @@ bool MessageDB::pop(uint32_t id)
     std::unique_lock<std::mutex> lock(mt);
     std::string lastSQLError;
 
-    Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Removing element id='%d' from rcpt='%s'", id, rcpt.c_str());
+    Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Removing msgId='%d' from rcpt='%s'", id, rcpt.c_str());
 
-    if (!db.query(&lastSQLError,"DELETE FROM queue WHERE id = :id;", {{":id",new Abstract::UINT32(id)}} ))
+    QueryInstance qi = db.query("DELETE FROM queue WHERE id = :id;", {{":id",new Abstract::UINT32(id)}},{});
+    if (!qi.query->exec(EXEC_TYPE_INSERT))
     {
-        Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't remove messages from '%s'", rcpt.c_str() );
+        Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't remove message id='%d' from '%s': %s", id, rcpt.c_str(), qi.query->getLastSQLError().c_str() );
+        return false;
+    }
+    else if ( !qi.query->getAffectedRows() )
+    {
+        Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't remove message id='%d' from '%s': Message does not exist", id, rcpt.c_str());
         return false;
     }
 
