@@ -62,7 +62,6 @@ bool MessageDB::push(const std::string &msg, const std::string &src, const bool 
     // Notify readers...
     cvNotEmptyQueue.notify_all();
 
-
     if (waitForAnswer)
     {
         std::unique_lock<std::mutex> lock(mt);
@@ -119,10 +118,10 @@ bool MessageDB::answer(uint32_t id, const std::string &msgAnswer)
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Setting answer to rcpt='%s', msgid='%lu'", rcpt.c_str(), id);
 
 
-        QueryInstance qi = db.query("UPDATE queue SET `answer`=:answer, answered='1' WHERE `id`=:id AND `answered`='0' AND `waitforanswer`='1';",
+        QueryInstance qi = db.qInsert("UPDATE queue SET `answer`=:answer, answered='1' WHERE `id`=:id AND `answered`='0' AND `waitforanswer`='1';",
                                     { {":answer",new Abstract::STRING(msgAnswer)}, {":id",new Abstract::UINT32(id)} },{});
 
-        if (!qi.query->exec(EXEC_TYPE_INSERT))
+        if (!qi.ok)
         {
             Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't set answer to rcpt='%s', msgid='%lu': %s", rcpt.c_str(),id,  qi.query->getLastSQLError().c_str() );
             return false;
@@ -147,8 +146,8 @@ bool MessageDB::pop(uint32_t id)
 
     Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Removing msgId='%d' from rcpt='%s'", id, rcpt.c_str());
 
-    QueryInstance qi = db.query("DELETE FROM queue WHERE id = :id;", {{":id",new Abstract::UINT32(id)}},{});
-    if (!qi.query->exec(EXEC_TYPE_INSERT))
+    QueryInstance qi = db.qInsert("DELETE FROM queue WHERE id = :id;", {{":id",new Abstract::UINT32(id)}},{});
+    if (!qi.ok)
     {
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't remove message id='%d' from '%s': %s", id, rcpt.c_str(), qi.query->getLastSQLError().c_str() );
         return false;
@@ -210,6 +209,8 @@ MessageReg MessageDB::front(bool waitForMSG, bool onlyWaitForAnswer)
             reg.msg = msg.getValue();
             reg.src = src.getValue();
             reg.waitforanswer = waitForAnswer.getValue();
+
+            break;
         }
 
         if (waitForMSG && !reg.found)
@@ -241,8 +242,8 @@ bool MessageDB::initSchema()
         if (! db.query("CREATE TABLE `queue` (\n"
                        "       `id`            INTEGER         NOT NULL PRIMARY KEY AUTOINCREMENT,\n"
                        "       `src`           VARCHAR(256)    NOT NULL,\n"
-                       "       `msg`           VARCHAR(8192)   NOT NULL,\n"
-                       "       `answer`        VARCHAR(8192)   DEFAULT NULL,\n"
+                       "       `msg`           TEXT            NOT NULL,\n"
+                       "       `answer`        TEXT            DEFAULT NULL,\n"
                        "       `answered`      BOOLEAN         DEFAULT '0',\n"
                        "       `waitforanswer` BOOLEAN         DEFAULT '0',\n"
                        "       `expiration`    BIGINT          NOT NULL DEFAULT 86400,\n"
