@@ -65,9 +65,18 @@ curl --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://we
 
 And then, using the curl verbosity mode, check at the header the message Id and send your answer.
 
+if you want to wait until online the message comes, then:
+
+```bash
+# As bob, Load the private/public key that authenticate with the ca.crt:
+curl --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/front?wait=1'
+```
+
+And if you want to answer a message (don't forget change the msgId):
+
 ```bash
 # Answer the message by his Id.
-curl --data-binary "NO"  -H "Content-Type: application/octet-stream" --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/answer?id=12'
+curl --data-binary "NO"  -H "Content-Type: application/octet-stream" --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/answer?msgId=12'
 ```
 
 after that, the web server will deliver the answer to the listener.
