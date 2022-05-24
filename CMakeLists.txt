@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 include(GNUInstallDirs)
 
 set(APP_NAME "uLightWMQ")
-set(SVERSION 1.0.0)
+set(SVERSION 1.0.1)
 
 project(${APP_NAME})
 project(${PROJECT_NAME} VERSION ${SVERSION} DESCRIPTION "Unmanarc's Lightweight Web Message Queue")
