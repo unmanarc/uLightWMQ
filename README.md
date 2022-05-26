@@ -41,7 +41,7 @@ firewall-cmd --reload
 ```
 
 ***
-## Usage (HOWTO/Examples)
+## Usage/HOWTO:
 
 1. First, replace the ca.crt/web_snakeoil.key/web_snakeoil.crt with your own X.509 certs.
 2. (re)Start the program in background 
