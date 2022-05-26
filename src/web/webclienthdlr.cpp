@@ -4,6 +4,7 @@
 #include <mdz_hlp_functions/appexec.h>
 #include <mdz_mem_vars/streamableprocess.h>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
 
 #include <mdz_net_sockets/socket_tls.h>
 
@@ -15,6 +16,7 @@
 #include <regex>
 
 #include "../db/dbcollection.h"
+#include "../db/passdb.h"
 #include "../globals.h"
 
 using namespace Mantids::Network::HTTP;
@@ -23,7 +25,7 @@ using namespace Mantids::Memory::Streams;
 WebClientHdlr::WebClientHdlr(void *parent, Mantids::Memory::Streams::Streamable *sock) : HTTPv1_Server(sock)
 {
     Mantids::Network::TLS::Socket_TLS * tls = (Mantids::Network::TLS::Socket_TLS *)sock;
-    commonName = tls->getTLSPeerCN();
+    commonName = boost::algorithm::to_lower_copy(tls->getTLSPeerCN());
     ((Mantids::Memory::Containers::B_Chunks *)request().content->getStreamableOuput())->setMaxSize( Globals::getLC_Database_MaxMessageSize() );
 }
 
@@ -39,12 +41,19 @@ Response::StatusCode WebClientHdlr::processClientRequest()
 
     if (commonName.empty())
     {
-        Response::StatusCode ret  = Response::StatusCode::S_401_UNAUTHORIZED;
-        getResponseDataStreamer()->writeString("0");
-        return ret;
+        if (  PassDB::validateUserPass( boost::algorithm::to_lower_copy(reqData.AUTH_USER), reqData.AUTH_PASS )  )
+        {
+            commonName = boost::algorithm::to_lower_copy(reqData.AUTH_USER);
+        }
+        else
+        {
+            Response::StatusCode ret  = Response::StatusCode::S_401_UNAUTHORIZED;
+            getResponseDataStreamer()->writeString("0");
+            return ret;
+        }
     }
 
-    std::regex regexp("^[a-zA-z0-9]+");
+    std::regex regexp("^[a-z0-9]+");
     if(!regex_match(commonName,regexp))
     {
         Response::StatusCode ret  = Response::StatusCode::S_406_NOT_ACCEPTABLE;

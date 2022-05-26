@@ -83,7 +83,7 @@ MessageDB *DBCollection::getOrCreateMessageDB(const std::string &rcpt)
     else
     {
         auto msgDB = new MessageDB;
-        if (msgDB->start( Globals::getLC_Database_FilesPath(), rcpt ))
+        if (msgDB->start( rcpt ))
         {
             rcpts[rcpt] = msgDB;
             return msgDB;

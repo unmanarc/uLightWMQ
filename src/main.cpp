@@ -5,8 +5,9 @@
 #include "config.h"
 #include "globals.h"
 
-#include "web/wmqserverimpl.h"
-#include "db/messagedb.h"
+#include "web/wmq509authserverimpl.h"
+#include "web/wmquserpassserverimpl.h"
+#include "db/passdb.h"
 #include "db/dbcollection.h"
 
 using namespace Mantids;
@@ -33,7 +34,8 @@ public:
         globalArguments->setEmail("aaron@unmanarc.com");
         globalArguments->setDescription(PROJECT_DESCRIPTION);
 
-        webserver.getWebClientParameters().softwareVersion = globalArguments->getVersion();
+        webserverX509Auth.getWebClientParameters().softwareVersion = globalArguments->getVersion();
+        webserverUserPass.getWebClientParameters().softwareVersion = globalArguments->getVersion();
 
         globalArguments->addCommandLineOption("Service Options", 'c', "config-dir" , "Configuration directory"  , "/etc/ulightwmq", Mantids::Memory::Abstract::TYPE_STRING );
     }
@@ -94,7 +96,8 @@ public:
         Globals::getRPCLog()->setStandardLogSeparator(",");
         Globals::getRPCLog()->setDebug(Globals::getLC_LogsDebug());
 
-        webserver.prepare();
+        webserverUserPass.prepare();
+        webserverX509Auth.prepare();
 
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_INFO, "Configuration file loaded OK.");
 
@@ -103,13 +106,16 @@ public:
 
     int _start(int argc, char *argv[], Arguments::GlobalArguments * globalArguments)
     {
+        PassDB::start();
         DBCollection::start();
-        webserver.start();
+        webserverX509Auth.start();
+        webserverUserPass.start();
         return 0;
     }
 
 private:
-    WMQServerImpl webserver;
+    WMQX509AUTHServerImpl webserverX509Auth;
+    WMQUserPassServerImpl webserverUserPass;
 
 };
 

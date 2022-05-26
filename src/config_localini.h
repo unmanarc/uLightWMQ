@@ -36,39 +36,69 @@ public:
         return pLocalConfig.get<bool>("Logs.Debug",false);
     }
 
-    static std::string getLC_WebServer_TLSCAFilePath()
+    static std::string getLC_WebServerX509AUTH_TLSCAFilePath()
     {
-        return pLocalConfig.get<std::string>("WebServer.CAFile", ".." + dirSlash + "keys" + dirSlash + "ca.crt");
+        return pLocalConfig.get<std::string>("WebServerX509AUTH.CAFile", ".." + dirSlash + "keys" + dirSlash + "ca.crt");
     }
 
-    static std::string getLC_WebServer_TLSCertFilePath()
+    static std::string getLC_WebServerX509AUTH_TLSCertFilePath()
     {
-        return pLocalConfig.get<std::string>("WebServer.CertFile", ".." + dirSlash + "keys" + dirSlash + "web_snakeoil.crt");
+        return pLocalConfig.get<std::string>("WebServerX509AUTH.CertFile", ".." + dirSlash + "keys" + dirSlash + "web_snakeoil.crt");
     }
 
-    static std::string getLC_WebServer_TLSKeyFilePath()
+    static std::string getLC_WebServerX509AUTH_TLSKeyFilePath()
     {
-        return pLocalConfig.get<std::string>("WebServer.KeyFile",  ".." + dirSlash + "keys" + dirSlash + "web_snakeoil.key");
+        return pLocalConfig.get<std::string>("WebServerX509AUTH.KeyFile",  ".." + dirSlash + "keys" + dirSlash + "web_snakeoil.key");
     }
 
-    static uint32_t getLC_WebServer_MaxThreads()
+    static uint32_t getLC_WebServerX509AUTH_MaxThreads()
     {
-        return pLocalConfig.get<uint32_t>("WebServer.MaxThreads",128);
+        return pLocalConfig.get<uint32_t>("WebServerX509AUTH.MaxThreads",128);
     }
 
-    static uint16_t getLC_WebServer_ListenPort()
+    static uint16_t getLC_WebServerX509AUTH_ListenPort()
     {
-        return pLocalConfig.get<uint16_t>("WebServer.ListenPort",60443);
+        return pLocalConfig.get<uint16_t>("WebServerX509AUTH.ListenPort",60443);
     }
 
-    static std::string getLC_WebServer_ListenAddr()
+    static std::string getLC_WebServerX509AUTH_ListenAddr()
     {
-        return pLocalConfig.get<std::string>("WebServer.ListenAddr","0.0.0.0");
+        return pLocalConfig.get<std::string>("WebServerX509AUTH.ListenAddr","0.0.0.0");
     }
 
-    static bool getLC_WebServer_UseIPv6()
+    static bool getLC_WebServerX509AUTH_UseIPv6()
     {
-        return pLocalConfig.get<bool>("WebServer.ipv6",false);
+        return pLocalConfig.get<bool>("WebServerX509AUTH.ipv6",false);
+    }
+
+    static std::string getLC_WebServerUSERPASS_TLSCertFilePath()
+    {
+        return pLocalConfig.get<std::string>("WebServerUSERPASS.CertFile", ".." + dirSlash + "keys" + dirSlash + "web_snakeoil.crt");
+    }
+
+    static std::string getLC_WebServerUSERPASS_TLSKeyFilePath()
+    {
+        return pLocalConfig.get<std::string>("WebServerUSERPASS.KeyFile",  ".." + dirSlash + "keys" + dirSlash + "web_snakeoil.key");
+    }
+
+    static uint32_t getLC_WebServerUSERPASS_MaxThreads()
+    {
+        return pLocalConfig.get<uint32_t>("WebServerUSERPASS.MaxThreads",128);
+    }
+
+    static uint16_t getLC_WebServerUSERPASS_ListenPort()
+    {
+        return pLocalConfig.get<uint16_t>("WebServerUSERPASS.ListenPort",60443);
+    }
+
+    static std::string getLC_WebServerUSERPASS_ListenAddr()
+    {
+        return pLocalConfig.get<std::string>("WebServerUSERPASS.ListenAddr","0.0.0.0");
+    }
+
+    static bool getLC_WebServerUSERPASS_UseIPv6()
+    {
+        return pLocalConfig.get<bool>("WebServerUSERPASS.ipv6",false);
     }
 
     static std::string getLC_Database_FilesPath()

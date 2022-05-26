@@ -1,15 +1,15 @@
-#ifndef WEBSERVERIMPL_H
-#define WEBSERVERIMPL_H
+#ifndef WMQUSERPASSSERVERIMPL_H
+#define WMQUSERPASSSERVERIMPL_H
 
 #include <mdz_net_sockets/socket_tls.h>
 #include <mdz_net_sockets/socket_acceptor_multithreaded.h>
 
 #include "webclienthdlr.h"
 
-class WMQServerImpl
+class WMQUserPassServerImpl
 {
 public:
-    WMQServerImpl();
+    WMQUserPassServerImpl();
     void prepare();
     void start();
 
@@ -34,4 +34,4 @@ private:
 
 };
 
-#endif // WEBSERVERIMPL_H
+#endif // WMQUSERPASSSERVERIMPL_H

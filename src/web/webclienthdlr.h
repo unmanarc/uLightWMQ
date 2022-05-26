@@ -29,11 +29,8 @@ protected:
     Mantids::Network::HTTP::Response::StatusCode processClientRequest() override;
 
 private:
-
     std::string commonName;
     webClientParams webClientParameters;
-
-
 };
 
 

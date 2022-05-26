@@ -2,7 +2,7 @@
 
 Unmanarc Lightweight HTTPS Web Message Queue
   
-Author: Aaron Mizrachi (unmanarc) <aaron@unmanarc.com>   
+Author: Aaron Mizrachi (unmanarc) <<aaron@unmanarc.com>>   
 Main License: LGPLv3
 
 
@@ -49,6 +49,11 @@ firewall-cmd --reload
 4. Every endpoint should start executing /pop to create their own database.
 5. put the hostname (in this case webserver) to /etc/hosts or your own DNS.
 
+
+***
+
+### For X.509 Authenticated Web Clients
+
 After that, you can deliver messages like this  (eg. from alice to bob):
 
 ```bash
@@ -80,17 +85,47 @@ curl --data-binary "NO"  -H "Content-Type: application/octet-stream" --cert issu
 ```
 
 after that, the web server will deliver the answer to the listener.
+***
+### For User/Pass Authenticated Web Clients
+
+First, after you start the server, the user database will be created in `/var/lib/ulightwmq/users.db`
+
+there you can create users with an alternate authentication method (http basic user/pass).
+
+1. first create the SHA256 password:
+
+```bash
+# Command:
+read -s -p 'Pass: ' PASS ; echo;  (echo -n $PASS | sha256sum | awk '{print $1}'); PASS=
+
+# Expected Answer for testing123:
+## pass:
+## b822f1cd2dcfc685b47e83e3980289fd5d8e3ff3a82def24d7d1d68bb272eb32
+```
+
+2. then you insert into the database using `sqlite3 /var/lib/ulightwmq/users.db`
+
+```sql
+insert into users(user,hash) values('testing','b822f1cd2dcfc685b47e83e3980289fd5d8e3ff3a82def24d7d1d68bb272eb32');
+```
+
+And now you can use this authentication with every server URL like this (beware that ps may expose your password):
+
+```bash
+# Pushing a message for bob:
+curl --data-binary "Hello Bob" -H "Content-Type: application/octet-stream" --cacert ca.crt  -v 'https://testing:testing123@webserver:60443/push?dst=bob'
+```
+
 
 
 ***
-## Compatibility
+### Don't forget!!!
 
-This program was tested so far in:
+* For a queue to exist for any other user, you must execute a front or pop operation with the user certificate or password before.
+* Both user/pass and X.509 methods can coexist in the same server
+* Both authentications have the same queue backend, you can push using user/pass and retrieve using x509
 
-* OpenSUSE TumbleWeed
-* Fedora Linux 34
-* Ubuntu 20.04 LTS (Server)
-* CentOS/RHEL 7/8
+***
 
 ### Overall Pre-requisites:
 

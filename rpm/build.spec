@@ -1,5 +1,5 @@
 %define name uLightWMQ
-%define version 1.0.1
+%define version 1.0.2
 %define build_timestamp %{lua: print(os.date("%Y%m%d"))}
 
 Name:           %{name}

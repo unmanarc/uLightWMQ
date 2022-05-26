@@ -4,10 +4,7 @@
 #include <atomic>
 #include <utility>
 
-#include <mdz_auth/manager.h>
-#include <mdz_auth/session.h>
 #include <mdz_db_sqlite3/sqlconnector_sqlite3.h>
-
 #include <mdz_hlp_functions/os.h>
 #include <mdz_thr_mutex/mutex_shared.h>
 
@@ -40,7 +37,7 @@ class MessageDB
 {
 public:
     MessageDB(){}
-    bool start(const std::string &dbPath, const std::string & rcpt);
+    bool start(const std::string & rcpt);
 
     /**
      * @brief push Push Message from source

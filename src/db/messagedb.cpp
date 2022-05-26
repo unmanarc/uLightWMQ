@@ -9,20 +9,16 @@
 #include <mdz_mem_vars/a_int64.h>
 #include <mdz_mem_vars/a_var.h>
 
-
-#include <arpa/inet.h>
-
 #include "../globals.h"
 
 using namespace Mantids::Memory;
 using namespace Mantids::Database;
-using namespace Mantids::Authentication;
 using namespace Mantids::Application;
 
-bool MessageDB::start(const std::string &_dbPath, const std::string &rcpt)
+bool MessageDB::start(const std::string &rcpt)
 {
     this->rcpt = rcpt;
-    dbPath = _dbPath + "/msgs_" + rcpt + ".db";
+    dbPath = Globals::getLC_Database_FilesPath() + "/msgs_" + rcpt + ".db";
     statusOK = db.connect(dbPath) && initSchema();
     return statusOK;
 }
@@ -37,7 +33,7 @@ bool MessageDB::push(const std::string &msg, const std::string &src, const bool 
     {
         std::unique_lock<std::mutex> lock(mt);
 
-        Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Adding message to rcpt='%s'", rcpt.c_str());
+        Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Adding message to rcpt='%s' from src='%s'", rcpt.c_str(), src.c_str());
 
         auto qi = db.prepareNewQueryInstance();
         qi.query->setFetchLastInsertRowID(true);
