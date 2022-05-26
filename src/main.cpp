@@ -34,8 +34,16 @@ public:
         globalArguments->setEmail("aaron@unmanarc.com");
         globalArguments->setDescription(PROJECT_DESCRIPTION);
 
-        webserverX509Auth.getWebClientParameters().softwareVersion = globalArguments->getVersion();
-        webserverUserPass.getWebClientParameters().softwareVersion = globalArguments->getVersion();
+
+        if (Globals::getLC_WebServerUSERPASS_Enabled())
+        {
+            webserverUserPass.getWebClientParameters().softwareVersion = globalArguments->getVersion();
+        }
+        if (Globals::getLC_WebServerX509AUTH_Enabled())
+        {
+            webserverX509Auth.getWebClientParameters().softwareVersion = globalArguments->getVersion();
+        }
+
 
         globalArguments->addCommandLineOption("Service Options", 'c', "config-dir" , "Configuration directory"  , "/etc/ulightwmq", Mantids::Memory::Abstract::TYPE_STRING );
     }
@@ -96,8 +104,14 @@ public:
         Globals::getRPCLog()->setStandardLogSeparator(",");
         Globals::getRPCLog()->setDebug(Globals::getLC_LogsDebug());
 
-        webserverUserPass.prepare();
-        webserverX509Auth.prepare();
+        if (Globals::getLC_WebServerUSERPASS_Enabled())
+        {
+            webserverUserPass.prepare();
+        }
+        if (Globals::getLC_WebServerX509AUTH_Enabled())
+        {
+            webserverX509Auth.prepare();
+        }
 
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_INFO, "Configuration file loaded OK.");
 
@@ -106,10 +120,24 @@ public:
 
     int _start(int argc, char *argv[], Arguments::GlobalArguments * globalArguments)
     {
-        PassDB::start();
-        DBCollection::start();
-        webserverX509Auth.start();
-        webserverUserPass.start();
+        if (Globals::getLC_WebServerUSERPASS_Enabled())
+        {
+            if (!PassDB::start())
+            {
+                Globals::getAppLog()->log0(__func__,Logs::LEVEL_CRITICAL, "Failed configuring/opening password database.");
+                exit(-1);
+            }
+            webserverUserPass.start();
+        }
+
+        if (Globals::getLC_WebServerX509AUTH_Enabled())
+        {
+            if (!DBCollection::start())
+            {
+                exit(-2);
+            }
+            webserverX509Auth.start();
+        }
         return 0;
     }
 

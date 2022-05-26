@@ -61,6 +61,11 @@ public:
         return pLocalConfig.get<uint16_t>("WebServerX509AUTH.ListenPort",60443);
     }
 
+    static uint16_t getLC_WebServerX509AUTH_Enabled()
+    {
+        return pLocalConfig.get<bool>("WebServerX509AUTH.Enabled",true);
+    }
+
     static std::string getLC_WebServerX509AUTH_ListenAddr()
     {
         return pLocalConfig.get<std::string>("WebServerX509AUTH.ListenAddr","0.0.0.0");
@@ -89,6 +94,11 @@ public:
     static uint16_t getLC_WebServerUSERPASS_ListenPort()
     {
         return pLocalConfig.get<uint16_t>("WebServerUSERPASS.ListenPort",60443);
+    }
+
+    static uint16_t getLC_WebServerUSERPASS_Enabled()
+    {
+        return pLocalConfig.get<bool>("WebServerUSERPASS.Enabled",true);
     }
 
     static std::string getLC_WebServerUSERPASS_ListenAddr()
