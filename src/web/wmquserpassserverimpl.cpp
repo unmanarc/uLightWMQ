@@ -21,12 +21,12 @@ void WMQUserPassServerImpl::prepare()
     if (!socketTLS->setTLSPrivateKeyPath(Globals::getLC_WebServerUSERPASS_TLSKeyFilePath().c_str()))
     {
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_CRITICAL, "X.509 Private Key file not found.");
-        exit(-10);
+        exit(-110);
     }
     if (!socketTLS->setTLSPublicKeyPath(Globals::getLC_WebServerUSERPASS_TLSCertFilePath().c_str()))
     {
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_CRITICAL, "X.509 Public Certificate file not found.");
-        exit(-11);
+        exit(-111);
     }
 
     socketTLS->setUseIPv6( Globals::getLC_WebServerUSERPASS_UseIPv6() );
@@ -34,7 +34,7 @@ void WMQUserPassServerImpl::prepare()
     {
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_CRITICAL, "Unable to listen at %s:%d",
                                             Globals::getLC_WebServerUSERPASS_ListenAddr().c_str(), Globals::getLC_WebServerUSERPASS_ListenPort());
-        exit(-20);
+        exit(-120);
     }
 
     multiThreadedAcceptor.setAcceptorSocket(socketTLS);
