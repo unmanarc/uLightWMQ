@@ -111,7 +111,7 @@ Response::StatusCode WebClientHdlr::processClientRequest()
     }
     else if (getRequestURI() == "/waitForReply")
     {
-        int64_t msgId = strtoll(reqData.VARS_GET->getStringValue("id").c_str(),0,10);
+        int64_t msgId = strtoll(reqData.VARS_GET->getStringValue("msgId").c_str(),0,10);
         std::string dst = reqData.VARS_GET->getStringValue("dst");
         bool reqRemoveAfterRead = reqData.VARS_GET->getStringValue("removeAfterRead") == "0" ? 0:1;
 
@@ -250,7 +250,7 @@ Response::StatusCode WebClientHdlr::processClientRequest()
     else if (getRequestURI() == "/get")
     {
         auto msgDB = DBCollection::getOrCreateMessageDB(commonName);
-        int64_t msgId = strtoll(reqData.VARS_GET->getStringValue("id").c_str(),0,10);
+        int64_t msgId = strtoll(reqData.VARS_GET->getStringValue("msgId").c_str(),0,10);
 
         if (!msgDB)
         {
