@@ -30,7 +30,7 @@ struct MessageReply
         timedout=false;
     }
 
-    std::string message;
+    std::string reply;
     bool answered, timedout;
 };
 

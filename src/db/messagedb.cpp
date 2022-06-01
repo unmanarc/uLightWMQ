@@ -8,6 +8,9 @@
 #include <mdz_mem_vars/a_int64.h>
 #include <mdz_mem_vars/a_var.h>
 
+
+#include <inttypes.h>
+
 #include "../globals.h"
 
 using namespace Mantids::Memory;
@@ -30,9 +33,6 @@ std::pair<bool, int64_t> MessageDB::push(const std::string &msg, const std::stri
 
     {
         std::unique_lock<std::mutex> lock(mt);
-
-        Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Adding message to rcpt='%s' from src='%s'", rcpt.c_str(), src.c_str());
-
         auto qi = db.prepareNewQueryInstance();
         qi.query->setFetchLastInsertRowID(true);
         qi.query->setPreparedSQLQuery(
@@ -46,7 +46,7 @@ std::pair<bool, int64_t> MessageDB::push(const std::string &msg, const std::stri
                     });
         if (!qi.query->exec(EXEC_TYPE_INSERT))
         {
-            Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't add message from '%s' to '%s': %s", src.c_str(),rcpt.c_str(),  lastSQLError.c_str() );
+            Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "SQL Error: %s", lastSQLError.c_str() );
             return std::make_pair(false,0);
         }
 
@@ -63,17 +63,17 @@ MessageReply MessageDB::waitForReply(int64_t id, const std::string & src)
 {
     MessageReply msgReply;
     std::unique_lock<std::mutex> lock(mt);
-    Abstract::STRING answer;
+    Abstract::STRING reply;
     Abstract::BOOL answered;
 
     while (1)
     {
-        QueryInstance i = db.query("SELECT `answer`,`answered` FROM queue WHERE `rowid`=:rowid and `src`=:src;",
+        QueryInstance i = db.query("SELECT `reply`,`answered` FROM queue WHERE `rowid`=:rowid and `src`=:src;",
                                    {
                                        {":rowid",new Abstract::INT64(id)},
                                        {":src",new Abstract::STRING(src)}
                                    },
-                                   { &answer, &answered  }
+                                   { &reply, &answered  }
                                    );
 
         if (i.ok && i.query->step())
@@ -81,7 +81,7 @@ MessageReply MessageDB::waitForReply(int64_t id, const std::string & src)
             if (answered.getValue())
             {
                 msgReply.answered = true;
-                msgReply.message = answer.toString();
+                msgReply.reply = reply.toString();
 
                 // Remove the message here.
 
@@ -89,7 +89,6 @@ MessageReply MessageDB::waitForReply(int64_t id, const std::string & src)
             }
             else
             {
-                Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Waiting for answer from '%s'...", rcpt.c_str());
                 if ( cvNotEmptyReplies.wait_for(lock, std::chrono::seconds( Globals::getLC_Database_AnswerTimeout() )) == std::cv_status::timeout )
                 {
                     msgReply.timedout = true;
@@ -100,7 +99,6 @@ MessageReply MessageDB::waitForReply(int64_t id, const std::string & src)
         }
         else
         {
-            Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Element from '%s' was removed before reply... aborting", rcpt.c_str());
             msgReply.timedout = false;
             msgReply.answered = false;
             return msgReply;
@@ -108,30 +106,27 @@ MessageReply MessageDB::waitForReply(int64_t id, const std::string & src)
     }
 }
 
-bool MessageDB::reply(int64_t id, const std::string &msgAnswer)
+bool MessageDB::reply(int64_t id, const std::string &msgReply)
 {
     {
         std::unique_lock<std::mutex> lock(mt);
 
-        Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Setting answer to message rcpt='%s', id='%lld'", rcpt.c_str(), id);
 
-
-        QueryInstance qi = db.qInsert("UPDATE queue SET `answer`=:answer, answered='1' WHERE `rowid`=:rowid AND `answered`='0' AND `replyable`='1';",
-                                      { {":answer",new Abstract::STRING(msgAnswer)}, {":rowid",new Abstract::INT64(id)} },{});
+        QueryInstance qi = db.qInsert("UPDATE queue SET `reply`=:reply, answered='1' WHERE `rowid`=:rowid AND `answered`='0' AND `replyable`='1';",
+                                      { {":reply",new Abstract::STRING(msgReply)}, {":rowid",new Abstract::INT64(id)} },{});
 
         if (!qi.ok)
         {
-            Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't reply to message rcpt='%s', id='%lld': %s", rcpt.c_str(),id,  qi.query->getLastSQLError().c_str() );
+            Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "SQL Error: %s", qi.query->getLastSQLError().c_str() );
             return false;
         }
         else if ( !qi.query->getAffectedRows() )
         {
-            Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't reply to message rcpt='%s', id='%lld': Message does not exist or already answered", rcpt.c_str(),id);
             return false;
         }
     }
 
-    // Notify readers that the message was answered...
+    // Notify readers that the message was replied...
     cvNotEmptyReplies.notify_all();
 
     return true;
@@ -142,22 +137,16 @@ bool MessageDB::remove(int64_t id)
     std::unique_lock<std::mutex> lock(mt);
     std::string lastSQLError;
 
-    Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Removing message id='%lld' from rcpt='%s'", id, rcpt.c_str());
-
     QueryInstance qi = db.qInsert("DELETE FROM queue WHERE `rowid` = :rowid;", {{":rowid",new Abstract::INT64(id)}},{});
     if (!qi.ok)
     {
-        Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't remove message id='%lld' from '%s': %s", id, rcpt.c_str(), qi.query->getLastSQLError().c_str() );
+        Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "SQL Error: %s", lastSQLError.c_str() );
         return false;
     }
     else if ( !qi.query->getAffectedRows() )
-    {
-        Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't remove message id='%lld' from '%s': Message does not exist", id, rcpt.c_str());
         return false;
-    }
 
     cvNotEmptyReplies.notify_all();
-
     return true;
 }
 
@@ -170,7 +159,7 @@ bool MessageDB::cleanExpired()
 
     if (!db.query(&lastSQLError,"DELETE FROM queue WHERE `cdate`+`expiration`>=strftime('%s', 'now');", {} ))
     {
-        Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "Can't remove messages from '%s'", rcpt.c_str() );
+        Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "SQL Error: %s", lastSQLError.c_str() );
         return false;
     }
 
@@ -189,8 +178,6 @@ MessageReg MessageDB::front(bool waitForMSG, bool onlyreplyable)
     Abstract::INT64 cdate;
 
     std::unique_lock<std::mutex> lock(mt);
-
-    Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Obtaining front element from '%s'", rcpt.c_str());
 
     do
     {
@@ -213,8 +200,6 @@ MessageReg MessageDB::front(bool waitForMSG, bool onlyreplyable)
 
         if (waitForMSG && !reg.found)
         {
-            Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Element from '%s' not found, waiting...", rcpt.c_str());
-
             if ( cvNotEmptyQueue.wait_for(lock, std::chrono::seconds( Globals::getLC_Database_MessageQueueFrontTimeout() )) == std::cv_status::timeout )
             {
                 return reg;
@@ -235,8 +220,6 @@ MessageReg MessageDB::get(int64_t id)
     Abstract::INT64 cdate;
 
     std::unique_lock<std::mutex> lock(mt);
-
-    Globals::getAppLog()->log0(__func__,Logs::LEVEL_DEBUG, "Obtaining element from '%s' at id='%lld'", rcpt.c_str(), id);
 
     QueryInstance i =
             db.qSelect("SELECT `msg`,`src`,`cdate`,`replyable` FROM queue WHERE `cdate`+`expiration`<strftime('%s', 'now') AND `rowid`=:rowid ORDER BY `rowid` ASC LIMIT 1;",
@@ -270,7 +253,7 @@ bool MessageDB::initSchema()
         if (! db.query("CREATE TABLE `queue` (\n"
                        "       `src`           VARCHAR(256)    NOT NULL,\n"
                        "       `msg`           TEXT            NOT NULL,\n"
-                       "       `answer`        TEXT            DEFAULT NULL,\n"
+                       "       `reply`        TEXT            DEFAULT NULL,\n"
                        "       `answered`      BOOLEAN         DEFAULT '0',\n"
                        "       `replyable`     BOOLEAN         DEFAULT '0',\n"
                        "       `expiration`    BIGINT          NOT NULL DEFAULT 86400,\n"
