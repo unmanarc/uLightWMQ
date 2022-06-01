@@ -6,7 +6,6 @@ Author: Aaron Mizrachi (unmanarc) <<aaron@unmanarc.com>>
 Main License: LGPLv3
 
 
-
 ***
 ## Installing packages (HOWTO)
 
@@ -54,37 +53,61 @@ firewall-cmd --reload
 
 ### For X.509 Authenticated Web Clients
 
-After that, you can deliver messages like this  (eg. from alice to bob):
+After that, you can deliver/push messages like this  (eg. from alice to bob):
 
 ```bash
-# Waiting for bob's answer while asking to close the app:
-curl --data-binary "Do you really want to close this app?"  -H "Content-Type: application/octet-stream" --cert issued/alice.crt --key private/alice.key --cacert ca.crt  -v 'https://webserver:60443/push?dst=bob&waitForAnswer=1'
+# Alice is only telling bob something (reply is not required):
+curl --data-binary "Are you sure?"  -H "Content-Type: application/octet-stream" --cert issued/alice.crt --key private/alice.key --cacert ca.crt  -v 'https://webserver:60443/push?dst=bob&reqReply=0'
+
+# Alice is asking bob if he is sure about something...
+curl --data-binary "Are you sure?"  -H "Content-Type: application/octet-stream" --cert issued/alice.crt --key private/alice.key --cacert ca.crt  -v 'https://webserver:60443/push?dst=bob&reqReply=1'
+
+# Then, the HTTP response will be the message ID in the bob (dst) queue.
 ```
 
-And answer messages like this (as bob, the msg receptor):
-
-```bash
-# As bob, Load the private/public key that authenticate with the ca.crt:
-curl --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/front'
-```
-
-And then, using the curl verbosity mode, check at the header the message Id and send your answer.
-
-if you want to wait until online the message comes, then:
+Then, someone can use the /front (or /get) command to get the messages from his queue:
 
 ```bash
 # As bob, Load the private/public key that authenticate with the ca.crt:
-curl --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/front?wait=1'
+curl --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/front?wait=0'
+
+# Front can also receive some other parameters:
+# /front?wait=0 > default behaviour: will not wait, if there is no message the connection will return immediatly
+# /front?wait=1 > will wait online for some seconds until bob receives a new message in his queue, 
+
+# On /front you can also use removeAfterRead for non-answerable messages like this, the message will be immediatle removed:
+curl --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/front?removeAfterRead=1&wait=0'
+
+# Also you can use /get to get messages as a list (not as queue)
+curl --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/get?msgId=897'
 ```
 
-And if you want to answer a message (don't forget change the msgId):
+Supposing that the ID is 897 and bob wants to answer the alice "Are you sure?" question, then it can be done with /reply:
 
 ```bash
-# Answer the message by his Id.
-curl --data-binary "NO"  -H "Content-Type: application/octet-stream" --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/answer?msgId=12'
+# Reply the message by his Id.
+curl --data-binary "YES"  -H "Content-Type: application/octet-stream" --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/reply?msgId=897'
+# after that, the web server will deliver the reply to the listener.
 ```
 
-after that, the web server will deliver the answer to the listener.
+If you want to wait for any reply on any of your sent messages:
+
+```bash
+# This is the way you get message reply, it will wait (or timeout) until bob answer the message
+curl --data-binary "YES"  -H "Content-Type: application/octet-stream" --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/waitForReply?msgId=897dst=bob&removeAfterRead=1'
+# after that, the message will be displayed and the message registry will be dropped
+```
+
+Finally, For removing a message from my own queue, you can use /remove:
+
+```bash
+# Removing the message
+curl --data-binary "YES"  -H "Content-Type: application/octet-stream" --cert issued/bob.crt --key private/bob.key --cacert ca.crt  -v 'https://webserver:60443/remove?msgId=109'
+```
+
+
+
+
 ***
 ### For User/Pass Authenticated Web Clients
 
@@ -121,7 +144,7 @@ curl --data-binary "Hello Bob" -H "Content-Type: application/octet-stream" --cac
 ***
 ### Don't forget!!!
 
-* For a queue to exist for any other user, you must execute a front or pop operation with the user certificate or password before.
+* For a queue to exist for any other user, you must execute a front or remove operation with the user certificate or password. If not, nobody will be able to send messages to the queue
 * Both user/pass and X.509 methods can coexist in the same server
 * Both authentications have the same queue backend, you can push using user/pass and retrieve using x509
 
