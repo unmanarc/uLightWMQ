@@ -66,7 +66,7 @@ Response::StatusCode WebClientHdlr::processClientRequest()
     if (getRequestURI() == "/push")
     {
         std::string dst = reqData.VARS_GET->getStringValue("dst");
-        bool waitForAnswer = reqData.VARS_GET->getStringValue("waitForAnswer") == "1" ? 1:0;
+        bool reqReply = reqData.VARS_GET->getStringValue("reqReply") == "1" ? 1:0;
 
         auto msgDB = DBCollection::getMessageDB(dst);
         if (msgDB)
@@ -76,34 +76,22 @@ Response::StatusCode WebClientHdlr::processClientRequest()
             auto streamIn = request().content->getStreamableOuput();
             streamIn->streamTo(&dataCpy,wrStatUpd);
 
-            MessageAnswer answer;
+            MessageReply reply;
 
-            if (waitForAnswer)
-            {
-                Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_INFO, remotePairAddress,"","", "", "wmqServer", 65535, "W/0: %s",getRequestURI().c_str());
-            }
+            auto r = msgDB->push( dataCpy.toString(), commonName, reqReply);
 
-            if (!msgDB->push( dataCpy.toString(), commonName, waitForAnswer, &answer ))
+            if (!r.first)
             {
-                getResponseDataStreamer()->writeString("0");
+                getResponseDataStreamer()->writeString("-1");
                 Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_WARN, remotePairAddress,"","", "", "wmqServer", 65535, "R/503: %s",getRequestURI().c_str());
                 ret = Response::StatusCode::S_503_SERVICE_UNAVAILABLE;
                 return ret;
             }
             else
             {
+                getResponseDataStreamer()->writeString(std::to_string(r.second));
+                Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_INFO, remotePairAddress,"","", "", "wmqServer", 65535, "R/200: %s",getRequestURI().c_str());
                 ret = Response::StatusCode::S_200_OK;
-                response().headers->add("X-Answered", std::to_string(answer.answered));
-                if (!waitForAnswer)
-                {
-                    getResponseDataStreamer()->writeString("1");
-                    Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_INFO, remotePairAddress,"","", "", "wmqServer", 65535, "R/200: %s",getRequestURI().c_str());
-                }
-                else
-                {
-                    Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_INFO, remotePairAddress,"","", "", "wmqServer", 65535, "W/1: %s",getRequestURI().c_str());
-                    getResponseDataStreamer()->writeString(answer.answer);
-                }
                 return ret;
             }
         }
@@ -116,7 +104,50 @@ Response::StatusCode WebClientHdlr::processClientRequest()
             return ret;
         }
     }
-    if (getRequestURI() == "/answer")
+    else if (getRequestURI() == "/waitForReply")
+    {
+        int64_t id = strtoll(reqData.VARS_GET->getStringValue("id").c_str(),0,10);
+        std::string dst = reqData.VARS_GET->getStringValue("dst");
+
+        auto msgDB = DBCollection::getMessageDB(dst);
+        if (msgDB)
+        {
+            Status wrStatUpd;
+            Mantids::Memory::Containers::B_Chunks dataCpy;
+            auto streamIn = request().content->getStreamableOuput();
+            streamIn->streamTo(&dataCpy,wrStatUpd);
+
+            MessageReply reply = msgDB->waitForReply( id, commonName );
+
+            response().headers->add("X-Answered", std::to_string(reply.answered));
+            response().headers->add("X-TimedOut", std::to_string(reply.timedout));
+
+            if (!reply.answered)
+            {
+                getResponseDataStreamer()->writeString("");
+                Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_WARN, remotePairAddress,"","", "", "wmqServer", 65535, "R/503: %s",getRequestURI().c_str());
+                ret = Response::StatusCode::S_404_NOT_FOUND;
+                return ret;
+            }
+            else
+            {
+                getResponseDataStreamer()->writeString(reply.message);
+                Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_INFO, remotePairAddress,"","", "", "wmqServer", 65535, "R/200: %s",getRequestURI().c_str());
+                ret = Response::StatusCode::S_200_OK;
+                return ret;
+            }
+        }
+        else
+        {
+            response().headers->add("X-ErrorMsg", "Destination Queue Not Found");
+            getResponseDataStreamer()->writeString("0");
+            Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_WARN, remotePairAddress,"","", "", "wmqServer", 65535, "R/404: %s",getRequestURI().c_str());
+            ret = Response::StatusCode::S_404_NOT_FOUND;
+            return ret;
+        }
+
+    }
+    else if (getRequestURI() == "/reply")
     {
         uint32_t msgId = strtoul(reqData.VARS_GET->getStringValue("msgId").c_str(),0,10);
 
@@ -129,9 +160,9 @@ Response::StatusCode WebClientHdlr::processClientRequest()
             streamIn->streamTo(&dataCpy,wrStatUpd);
 
             // TODO: enforce message size limit in bytes while copying,
-            if (!msgDB->answer( msgId, dataCpy.toString() ))
+            if (!msgDB->reply( msgId, dataCpy.toString() ))
             {
-                response().headers->add("X-ErrorMsg", "Unable to answer the message");
+                response().headers->add("X-ErrorMsg", "Unable to reply the message");
                 getResponseDataStreamer()->writeString("0");
                 Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_WARN, remotePairAddress,"","", "", "wmqServer", 65535, "R/503: %s",getRequestURI().c_str());
                 ret = Response::StatusCode::S_503_SERVICE_UNAVAILABLE;
@@ -154,7 +185,7 @@ Response::StatusCode WebClientHdlr::processClientRequest()
             return ret;
         }
     }
-    else if (getRequestURI() == "/pop")
+    else if (getRequestURI() == "/remove")
     {
         auto msgDB = DBCollection::getOrCreateMessageDB(commonName);
         if (!msgDB)
@@ -168,7 +199,7 @@ Response::StatusCode WebClientHdlr::processClientRequest()
         else
         {
             auto msgId = strtoul(reqData.VARS_GET->getStringValue("msgId").c_str(),0,10 );
-            if (msgDB->pop( msgId ))
+            if (msgDB->remove( msgId ))
             {
                 ret = Response::StatusCode::S_200_OK;
                 getResponseDataStreamer()->writeString("1");
@@ -179,6 +210,50 @@ Response::StatusCode WebClientHdlr::processClientRequest()
             {
                 response().headers->add("X-ErrorMsg", "Queue Pop Failed");
                 getResponseDataStreamer()->writeString("0");
+
+                Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_WARN, remotePairAddress,"","", "", "wmqServer", 65535, "R/404: %s",getRequestURI().c_str());
+                ret = Response::StatusCode::S_404_NOT_FOUND;
+                return ret;
+            }
+        }
+    }
+    else if (getRequestURI() == "/get")
+    {
+        auto msgDB = DBCollection::getOrCreateMessageDB(commonName);
+        if (!msgDB)
+        {
+            response().headers->add("X-ErrorMsg", "Queue not found and/or can't be created");
+            getResponseDataStreamer()->writeString("0");
+
+            Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_WARN, remotePairAddress,"","", "", "wmqServer", 65535, "R/503: %s",getRequestURI().c_str());
+            ret = Response::StatusCode::S_503_SERVICE_UNAVAILABLE;
+            return ret;
+        }
+        else
+        {
+            int64_t id = strtoll(reqData.VARS_GET->getStringValue("id").c_str(),0,10);
+            auto frontMsg = msgDB->get( id );
+
+            if (frontMsg.found)
+            {
+                ret = Response::StatusCode::S_200_OK;
+
+                response().headers->add("From", frontMsg.src);
+                response().headers->add("Id", std::to_string(frontMsg.id));
+                response().headers->add("RequireReply", std::to_string(frontMsg.replyable?1:0));
+
+                getResponseDataStreamer()->writeString(frontMsg.msg);
+
+                Mantids::Network::HTTP::Common::Date fileModificationDate;
+                fileModificationDate.setRawTime(frontMsg.cdate);
+                response().headers->add("Last-Modified", fileModificationDate.toString());
+
+                Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_INFO, remotePairAddress,"","", "", "wmqServer", 65535, "R/200: %s",getRequestURI().c_str());
+                return ret;
+            }
+            else
+            {
+                response().headers->add("X-ErrorMsg", "Not Found");
 
                 Globals::getRPCLog()->log(Mantids::Application::Logs::LEVEL_WARN, remotePairAddress,"","", "", "wmqServer", 65535, "R/404: %s",getRequestURI().c_str());
                 ret = Response::StatusCode::S_404_NOT_FOUND;
@@ -209,7 +284,7 @@ Response::StatusCode WebClientHdlr::processClientRequest()
 
                 response().headers->add("From", frontMsg.src);
                 response().headers->add("Id", std::to_string(frontMsg.id));
-                response().headers->add("RequireAnswer", std::to_string(frontMsg.waitforanswer?1:0));
+                response().headers->add("RequireReply", std::to_string(frontMsg.replyable?1:0));
 
                 getResponseDataStreamer()->writeString(frontMsg.msg);
 

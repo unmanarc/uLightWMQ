@@ -16,21 +16,22 @@ struct MessageReg
         id = 0;
         cdate = 0;
     }
-    bool found, waitforanswer;
-    uint32_t id;
+    bool found, replyable;
+    int64_t id;
     std::string msg, src;
     time_t cdate;
 };
 
-struct MessageAnswer
+struct MessageReply
 {
-    MessageAnswer()
+    MessageReply()
     {
         answered=false;
+        timedout=false;
     }
 
-    std::string answer;
-    bool answered;
+    std::string message;
+    bool answered, timedout;
 };
 
 class MessageDB
@@ -45,7 +46,14 @@ public:
      * @param src Source
      * @return true if inserted into the database, false otherwise.
      */
-    bool push(const std::string &msg, const std::string &src, const bool & waitForAnswer = false, MessageAnswer *msgAnswer = nullptr);
+    std::pair<bool,int64_t> push(const std::string &msg, const std::string &src, const bool & waitForAnswer = false);
+
+    /**
+     * @brief waitForReply Wait until the message is answered
+     * @param id message id
+     * @return message
+     */
+    MessageReply waitForReply(int64_t id, const std::string &src);
 
     /**
      * @brief answer Answer some request by id.
@@ -53,14 +61,14 @@ public:
      * @param msgAnswer Answer
      * @return true if answered correctly
      */
-    bool answer(uint32_t id, const std::string & msgAnswer);
+    bool reply(int64_t id, const std::string & msgAnswer);
 
     /**
      * @brief pop Remove Message identified by ID
      * @param id Message ID
      * @return true if removed.
      */
-    bool pop(uint32_t id);
+    bool remove(int64_t id);
 
     /**
      * @brief cleanExpired Remove expired messages.
@@ -75,6 +83,16 @@ public:
      */
     MessageReg front(bool waitForMSG, bool onlyWaitForAnswer = false);
 
+
+    /**
+     * @brief get  Get Message
+     * @param id Message ID
+     * @return Message
+     */
+    MessageReg get(int64_t id);
+
+
+
     ///////////////////
     bool getStatusOK();
 
@@ -85,7 +103,7 @@ private:
     std::string dbPath, rcpt;
     //Mantids::Threads::Sync::Mutex_Shared mutex;
     std::mutex mt;
-    std::condition_variable cvNotEmptyQueue, cvNotEmptyAnswers;
+    std::condition_variable cvNotEmptyQueue, cvNotEmptyReplies;
 
     Mantids::Database::SQLConnector_SQLite3 db;
 };
