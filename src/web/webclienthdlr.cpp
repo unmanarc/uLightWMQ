@@ -113,6 +113,7 @@ Response::StatusCode WebClientHdlr::processClientRequest()
     {
         int64_t msgId = strtoll(reqData.VARS_GET->getStringValue("id").c_str(),0,10);
         std::string dst = reqData.VARS_GET->getStringValue("dst");
+        bool reqRemoveAfterRead = reqData.VARS_GET->getStringValue("removeAfterRead") == "0" ? 0:1;
 
         Globals::getAppLog()->log2(__func__,  commonName, remotePairAddress, Logs::LEVEL_DEBUG, "Waiting for reply from dst='%s' with msgId='%" PRId64 "'", dst.c_str(), msgId);
 
@@ -124,11 +125,11 @@ Response::StatusCode WebClientHdlr::processClientRequest()
             auto streamIn = request().content->getStreamableOuput();
             streamIn->streamTo(&dataCpy,wrStatUpd);
 
-            MessageReply reply = msgDB->waitForReply( msgId, commonName );
-
+            MessageReply reply = msgDB->waitForReply( msgId, commonName,reqRemoveAfterRead );
 
             response().headers->add("X-Answered", std::to_string(reply.answered));
             response().headers->add("X-TimedOut", std::to_string(reply.timedout));
+            response().headers->add("X-Removed", std::to_string(reply.removed?1:0));
 
             if (!reply.answered)
             {
@@ -273,15 +274,15 @@ Response::StatusCode WebClientHdlr::processClientRequest()
                 Globals::getAppLog()->log2(__func__,  commonName, remotePairAddress, Logs::LEVEL_INFO, "Message msgId='%" PRId64 "' found and fetched, msgSize='%" PRId64 "'", msgId, frontMsg.msg.size());
                 ret = Response::StatusCode::S_200_OK;
 
-                response().headers->add("From", frontMsg.src);
-                response().headers->add("Id", std::to_string(frontMsg.id));
-                response().headers->add("RequireReply", std::to_string(frontMsg.replyable?1:0));
+                response().headers->add("X-From", frontMsg.src);
+                response().headers->add("X-MsgId", std::to_string(frontMsg.id));
+                response().headers->add("X-RequireReply", std::to_string(frontMsg.replyable?1:0));
 
                 getResponseDataStreamer()->writeString(frontMsg.msg);
 
                 Mantids::Network::HTTP::Common::Date fileModificationDate;
                 fileModificationDate.setRawTime(frontMsg.cdate);
-                response().headers->add("Last-Modified", fileModificationDate.toString());
+                response().headers->add("X-Last-Modified", fileModificationDate.toString());
 
                 Globals::getRPCLog()->log(Logs::LEVEL_INFO, remotePairAddress,"","", "", "wmqServer", 65535, "R/200: %s",getRequestURI().c_str());
                 return ret;
@@ -301,6 +302,7 @@ Response::StatusCode WebClientHdlr::processClientRequest()
     {
         auto msgDB = DBCollection::getOrCreateMessageDB(commonName);
         bool waitForMsg = reqData.VARS_GET->getStringValue("wait") == "1";
+        bool reqRemoveAfterRead = reqData.VARS_GET->getStringValue("removeAfterRead") == "1" ? 1:0;
 
         if (!msgDB)
         {
@@ -317,21 +319,23 @@ Response::StatusCode WebClientHdlr::processClientRequest()
         {
             Globals::getAppLog()->log2(__func__,  commonName, remotePairAddress, Logs::LEVEL_DEBUG, "Getting front message with waitMode='%d'", waitForMsg?1:0);
 
-            auto frontMsg = msgDB->front( waitForMsg );
+
+            auto frontMsg = msgDB->front( waitForMsg, reqRemoveAfterRead );
 
             if (frontMsg.found)
             {
                 ret = Response::StatusCode::S_200_OK;
 
-                response().headers->add("From", frontMsg.src);
-                response().headers->add("Id", std::to_string(frontMsg.id));
-                response().headers->add("RequireReply", std::to_string(frontMsg.replyable?1:0));
+                response().headers->add("X-From", frontMsg.src);
+                response().headers->add("X-MsgId", std::to_string(frontMsg.id));
+                response().headers->add("X-RequireReply", std::to_string(frontMsg.replyable?1:0));
+                response().headers->add("X-Removed", std::to_string(frontMsg.removed?1:0));
 
                 getResponseDataStreamer()->writeString(frontMsg.msg);
 
                 Mantids::Network::HTTP::Common::Date fileModificationDate;
                 fileModificationDate.setRawTime(frontMsg.cdate);
-                response().headers->add("Last-Modified", fileModificationDate.toString());
+                response().headers->add("X-Last-Modified", fileModificationDate.toString());
 
                 Globals::getAppLog()->log2(__func__,  commonName, remotePairAddress, Logs::LEVEL_INFO, "Front message msgId='%" PRId64 "' found and fetched, msgSize='%" PRId64 "'", frontMsg.id, frontMsg.msg.size());
 

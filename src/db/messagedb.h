@@ -15,8 +15,10 @@ struct MessageReg
         found = false;
         id = 0;
         cdate = 0;
+        replyable = false;
+        removed = false;
     }
-    bool found, replyable;
+    bool found, replyable, removed;
     int64_t id;
     std::string msg, src;
     time_t cdate;
@@ -26,12 +28,13 @@ struct MessageReply
 {
     MessageReply()
     {
+        removed=false;
         answered=false;
         timedout=false;
     }
 
     std::string reply;
-    bool answered, timedout;
+    bool answered, timedout, removed;
 };
 
 class MessageDB
@@ -41,7 +44,7 @@ public:
     bool start(const std::string & rcpt);
 
     /**
-     * @brief push Push Message from source
+     * @brief push Push Message from source to the current queue
      * @param msg Message
      * @param src Source
      * @return true if inserted into the database, false otherwise.
@@ -53,7 +56,7 @@ public:
      * @param id message id
      * @return message
      */
-    MessageReply waitForReply(int64_t id, const std::string &src);
+    MessageReply waitForReply(int64_t id, const std::string &src, bool removeAfterRead);
 
     /**
      * @brief answer Answer some request by id.
@@ -68,7 +71,7 @@ public:
      * @param id Message ID
      * @return true if removed.
      */
-    bool remove(int64_t id);
+    bool remove(int64_t id, bool lock = true);
 
     /**
      * @brief cleanExpired Remove expired messages.
@@ -81,7 +84,7 @@ public:
      * @param waitForMSG
      * @return
      */
-    MessageReg front(bool waitForMSG, bool onlyWaitForAnswer = false);
+    MessageReg front(bool waitForMSG, bool removeAfterRead, bool onlyReplyableMessages = false);
 
 
     /**

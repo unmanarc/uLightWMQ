@@ -59,7 +59,7 @@ std::pair<bool, int64_t> MessageDB::push(const std::string &msg, const std::stri
     return std::make_pair(true,rowid);
 }
 
-MessageReply MessageDB::waitForReply(int64_t id, const std::string & src)
+MessageReply MessageDB::waitForReply(int64_t id, const std::string & src, bool removeAfterRead)
 {
     MessageReply msgReply;
     std::unique_lock<std::mutex> lock(mt);
@@ -84,6 +84,8 @@ MessageReply MessageDB::waitForReply(int64_t id, const std::string & src)
                 msgReply.reply = reply.toString();
 
                 // Remove the message here.
+                if (removeAfterRead)
+                    msgReply.removed = remove(id,false);
 
                 return msgReply;
             }
@@ -132,21 +134,26 @@ bool MessageDB::reply(int64_t id, const std::string &msgReply)
     return true;
 }
 
-bool MessageDB::remove(int64_t id)
+bool MessageDB::remove(int64_t id, bool lock)
 {
-    std::unique_lock<std::mutex> lock(mt);
+    if (lock) mt.lock();
     std::string lastSQLError;
 
     QueryInstance qi = db.qInsert("DELETE FROM queue WHERE `rowid` = :rowid;", {{":rowid",new Abstract::INT64(id)}},{});
     if (!qi.ok)
     {
         Globals::getAppLog()->log0(__func__,Logs::LEVEL_ERR, "SQL Error: %s", lastSQLError.c_str() );
+        if (lock) mt.unlock();
         return false;
     }
     else if ( !qi.query->getAffectedRows() )
+    {
+        if (lock) mt.unlock();
         return false;
+    }
 
     cvNotEmptyReplies.notify_all();
+    if (lock) mt.unlock();
     return true;
 }
 
@@ -168,7 +175,7 @@ bool MessageDB::cleanExpired()
     return true;
 }
 
-MessageReg MessageDB::front(bool waitForMSG, bool onlyreplyable)
+MessageReg MessageDB::front(bool waitForMSG, bool removeAfterRead, bool onlyReplyableMessages)
 {
     MessageReg reg;
 
@@ -182,7 +189,7 @@ MessageReg MessageDB::front(bool waitForMSG, bool onlyreplyable)
     do
     {
         QueryInstance i =
-                onlyreplyable?
+                onlyReplyableMessages?
                     db.query("SELECT `rowid`,`msg`,`src`,`cdate`,`replyable` FROM queue WHERE `cdate`+`expiration`<strftime('%s', 'now') AND `replyable`='1' ORDER BY `rowid` ASC LIMIT 1;",{}, { &id, &msg , &src,&cdate, &replyable}):
                     db.query("SELECT `rowid`,`msg`,`src`,`cdate`,`replyable` FROM queue WHERE `cdate`+`expiration`<strftime('%s', 'now') ORDER BY `rowid` ASC LIMIT 1;",{}, { &id, &msg , &src,&cdate, &replyable});
 
@@ -194,6 +201,9 @@ MessageReg MessageDB::front(bool waitForMSG, bool onlyreplyable)
             reg.msg = msg.getValue();
             reg.src = src.getValue();
             reg.replyable = replyable.getValue();
+
+            if (removeAfterRead && !reg.replyable)
+                reg.removed = remove(reg.id,false);
 
             break;
         }
